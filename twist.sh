@@ -3,31 +3,7 @@
 ## Twist Ver 0.5.6 beta* Written by Unbinilium https://github.com/Unbinilium/Twist
 ## Update Ver 1.0 will provide mptcp feature, this script will be rewrite and use standard commands
 
-function shadowsocksconfig(){
-    SSLOCAL="[\"[::0]\",\"0.0.0.0\"]"
-    PORT="443"
-    PASSWORD=""
-    METHOD="xchacha20-ietf-poly1305"
-    TIMEOUT="1800"
-    OBFS="tls"
-    OBFSHOST="mzstatic.com"
-    OBFSURI="/"
-    FASTOPEN="true"
-    REUSEPORT="true"
-    DNS1="8.8.8.8"
-    DNS2="8.8.4.4"
-    DNSv6a="2001:4860:4860::8888"
-    DNSv6b="2001:4860:4860::8844"
-    DSCP="EF"
-    MODE="tcp_and_udp"
-    MTU=""
-    MPTCP="false"
-    IPV6FIRST="false"
-    SYSLOG="true"
-    NODELAY="true"
-    FWS="enable"
-    BBR="enable"
-}
+
 
 function systemconfig(){
     libsodiumver=""
@@ -42,54 +18,20 @@ function systemconfig(){
     IPREGEX="^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$"
 }
 
-function install_twist(){
-    clear
-    twistprint
-    echo -e "#[\033[32;1m   A Light Script For You To Setup Shadowsocks-libev Server       \033[0m]#"
-    echo -e "#[\033[32;1m              Twist Script Written By Unbinilium                  \033[0m]#"
-    echo -e "#[\033[32;1m             Installation will Start in 5 Seconds                 \033[0m]#"
-    twistprint banner
-    echo ""
-    sleep 5
-    rootness
-    selinuxdisable
-    [ -d /etc/twist ] || mkdir -p /etc/twist
-    twistlog "[TWIST Installing]"
-    shadowsocksconfig
-    systemconfig
-    systemdetect
-    dependenciesinstall
-    tcpbbrenable
-    sslibevinstall "install"
-    sslibevconfigure
-    firewallconfigure
-    servicesstart
-    servicesstatus
-}
-
 function update_twist(){
     clear
     twistprint
-    echo -e "#[\033[32;1m                 Update Twist Shadowsocks-libev                   \033[0m]#"
     echo -e "#[\033[32;1m                 Update will Start in 5 Seconds                   \033[0m]#"
     twistprint banner
     echo ""
     sleep 5
     rootness
     twistlog "[TWIST Updating]"
-    shadowsocksconfig
     systemconfig
     selinuxdisable
     systemdetect
     if [ "$twistinstalled" = "false" ]; then
         twistprint banner nofile
-    else
-        if [ -r /var/run/shadowsocks-libev.pid ]; then
-            read pid < /var/run/shadowsocks-libev.pid
-            [ -e /etc/twist/twistprotect ] && { echo -e "# \${date} Shadowsocks-libev Service Stopped Due To Update " >> /var/log/twist; rm -f /etc/twist/twistprotect; }
-            kill -9 $pid
-            rm -f /var/run/shadowsocks-libev.pid
-        fi
     fi
     dependenciesinstall
     sslibevinstall "install"
@@ -108,7 +50,6 @@ function update_twist(){
 function uninstall_twist(){
     clear
     twistprint
-    echo -e "#[\033[31;1m               Uninstall Twist Shadowsocks-libev                  \033[0m]#"
     echo -e "#[\033[31;1m               Uninstall will Start in 5 Seconds                  \033[0m]#"
     twistprint banner
     echo ""
@@ -143,7 +84,6 @@ function uninstall_twist(){
     timemachine "restore" "/etc/twist/.htaccess" "/var/www/html/.htaccess"
     timemachine "restore" "/etc/twist/index.html" "/var/www/html/index.html"
     rm -f /usr/bin/twist /root/twistprotect /var/log/twist
-    rm -fr /etc/twist /etc/shadowsocks-libev
     systemctl restart fail2ban apache2
     [ -e /var/www/html/index.html ] || systemctl stop apache2
     ldconfig
@@ -523,33 +463,7 @@ function sslibevinstall(){
         ldconfig
         rm -rf libsodium-${libsodiumver}.tar.gz libsodium-${libsodiumver} mbedtls-${mbedtlsver}-gpl.tgz mbedtls-${mbedtlsver}
     fi
-    [ -z "$sslibevtag" ] && sslibevtag="$(wget -qO- https://api.github.com/repos/shadowsocks/shadowsocks-libev/releases/latest | grep 'tag_name' | cut -d\" -f4)"
-    sslibevver="shadowsocks-libev-$(echo ${sslibevtag} | sed -e 's/^[a-zA-Z]//g')"
-    wget -t 3 -T 30 -nv -O ${sslibevver}.tar.gz https://github.com/shadowsocks/shadowsocks-libev/releases/download/${sslibevtag}/${sslibevver}.tar.gz
-    [ "$?" != "0" ] && sslibevinstallerr "shadowsocks-libev-$(echo ${sslibevtag} | sed -e 's/^[a-zA-Z]//g')"
-    [ -d ${sslibevver} ] && rm -rf $sslibevver
-    tar zxf ${sslibevver}.tar.gz
-    pushd $sslibevver
-    ./configure --disable-documentation
-    make "-j$((MAKECORES+1))" && make ${1} || sslibevinstallerr "shadowsocks-libev-$(echo ${sslibevtag} | sed -e 's/^[a-zA-Z]//g')" err
-    popd
-    ldconfig
-    [ -z "$ssobfstag" ] && ssobfstag="$(wget -qO- https://api.github.com/repos/shadowsocks/simple-obfs/releases/latest | grep 'tag_name' | cut -d\" -f4)"
-    ssobfsver="simple-obfs-$(echo ${ssobfstag} | sed -e 's/^[a-zA-Z]//g')"
-    wget -t 3 -T 30 -nv -O ${ssobfsver}.tar.gz https://github.com/shadowsocks/simple-obfs/archive/${ssobfstag}.tar.gz
-    [ "$?" != "0" ] && sslibevinstallerr "simple-obfs-$(echo ${ssobfstag} | sed -e 's/^[a-zA-Z]//g')"
-    [ -d ${ssobfsver} ] && rm -rf $ssobfsver
-    tar zxf ${ssobfsver}.tar.gz
-    pushd $ssobfsver
-    [ -d libcork ] && rm -rf libcork
-    git clone https://github.com/shadowsocks/libcork.git -b simple-obfs
-    [ "$?" != "0" ] && sslibevinstallerr "libcork"
-    ./autogen.sh
-    ./configure
-    make "-j$((MAKECORES+1))" && make ${1} || sslibevinstallerr "simple-obfs-$(echo ${ssobfstag} | sed -e 's/^[a-zA-Z]//g')" err
-    popd
-    ldconfig
-    [ -f /usr/local/bin/obfs-server ] && ln -s /usr/local/bin/obfs-server /usr/bin
+   
     rm -rf ${sslibevver}.tar.gz $sslibevver ${ssobfsver}.tar.gz $ssobfsver
 }
 
@@ -562,9 +476,6 @@ function sslibevconfigure(){
     [ -z "$OBFSURI" ] && OBFSURL=""
     [ "$OBFSURI" = "/" ] && OBFSURL=""
     [ -z "$PASSWORD" ] && PASSWORD="$(< /dev/urandom tr -dc 'A-HJ-NPR-Za-km-z2-9-._+?%^&*()' | head -c 8)"
-    [ -d /etc/shadowsocks-libev ] || mkdir -p /etc/shadowsocks-libev
-    timemachine "backup" "/etc/shadowsocks-libev/config.json" "/etc/twist/config.json"
-    cat > /etc/shadowsocks-libev/config.json <<-EOF
 {
     "server":${SSLOCAL},
     "server_port":${PORT},
@@ -713,62 +624,6 @@ function servicesstart(){
         sed --follow-symlinks -i '/^exit 0/d' /etc/rc.local
         cat >> /etc/rc.local <<-EOF
 
-sysctl -q -p
-iptables-restore < /etc/iptables.rules
-ip6tables-restore < /etc/ip6tables.rules
-systemctl restart fail2ban cron ${webservername}
-if [ -e /etc/twist/twistprotect ]; then
-    if [ -r /var/run/shadowsocks-libev.pid ]; then
-        read pid < /var/run/shadowsocks-libev.pid
-        [ -d "/proc/\${pid}" ] || ${ssserverpath} -uv -c /etc/shadowsocks-libev/config.json -f /var/run/shadowsocks-libev.pid
-    else
-        ${ssserverpath} -uv -c /etc/shadowsocks-libev/config.json -f /var/run/shadowsocks-libev.pid
-    fi
-fi
-exit 0
-
-EOF
-    else
-        [ -e /etc/rc.local ] && cp -f "/etc/rc.local" "/etc/twist/rc.local.old-${date}"
-    fi
-    cat > /usr/bin/twist <<-EOF
-#!/bin/bash
-
-date="\$(date +%Y-%m-%d-%H:%M:%S)"
-status="0"
-if [ ! -f /etc/shadowsocks-libev/config.json ]; then
-    twistlog "Shadowsocks-libev Service Error Due To No Config File"
-    echo -e "# \033[31;1mError: Shadowsocks-libev config file\033[0m \033[32;1m/etc/shadowsocks-libev/config.json\033[0m \033[31;1mwas not found \033[0m"
-    exit 1
-else
-    [ -e /var/log/twist ] || touch /var/log/twist
-fi
-
-twistlog(){
-    echo "# \${date} \${1} " >> /var/log/twist
-    [ "\$2" = "echo" ] && echo -e "# \033[\${3};1m\${1} \033[0m"
-}
-
-ssserverstatus(){
-    if [ -r /var/run/shadowsocks-libev.pid ]; then
-        read pid < /var/run/shadowsocks-libev.pid
-        if [ -d "/proc/\${pid}" ]; then
-            twistlog "Shadowsocks-libev Service is Running" "\$1" "32"
-            status="0"
-            return 0
-        else
-            twistlog "Shadowsocks-libev Service is Stoped" "\$1" "31"
-            rm -f /var/run/shadowsocks-libev.pid
-            status="1"
-            return 1
-        fi
-    else
-        twistlog "Shadowsocks-libev Service is Stoped" "\$1" "31"
-        status="2"
-        return 2
-    fi
-}
-
 componentps(){
     if [ "\$(pgrep \${1} | wc -l)" = "0" ]; then
         if [ "\$4" = "enable" ]; then
@@ -811,79 +666,6 @@ twist_status(){
     fi
 }
 
-twist_start(){
-    twistlog "[TWIST Starting Server Service]" "echo" "34"
-    ssserverstatus
-    if [ "\$?" = "0" ]; then
-       twistlog "Shadowsocks-libev Service is Already Running" "echo" "32"
-        status="0"
-    else
-        ${ssserverpath} -uv -c /etc/shadowsocks-libev/config.json -f /var/run/shadowsocks-libev.pid
-        [ -e /etc/twist/twistprotect ] || echo -e "# \${date} [Shadowsocks Protect Services Enabled] " >> /etc/twist/twistprotect
-        ssserverstatus
-        echostatus "\$?" "Starting" "Shadowsocks-libev"
-    fi
-    componentps "fail2ban" "Fail2ban Protect" "hide" "enable"
-    if [ "\$?" = "0" ]; then
-        twistlog "Fail2ban Protect Service is Already Running" "echo" "32"
-    else
-        systemctl start fail2ban
-        componentps "fail2ban" "Fail2ban Protect" "hide" "enable"
-        echostatus "\$?" "Starting" "Fail2ban Protect"
-    fi
-    componentps "$webservername" "Fake Web Redirect" "hide" "$FWS"
-    case "\$?" in
-        0)
-            twistlog "Fake Web Redirect Service is Already Running" "echo" "32"
-            ;;
-        1)
-            systemctl start ${webservername}
-            componentps "$webservername" "Fake Web Redirect" "hide" "$FWS"
-            echostatus "\$?" "Starting" "Fake Web Redirect"
-            ;;
-        2)
-            componentps "$webservername" "Fake Web Redirect" "echo" "disabled"
-            ;;
-    esac
-}
-
-twist_stop(){
-    twistlog "[TWIST Stopping Server Service]" "echo" "34"
-    ssserverstatus
-    if [ "\$?" = "0" ]; then
-        [ -e /etc/twist/twistprotect ] && { echo -e "# \${date} [Shadowsocks Protect Services Disabled] " >> /var/log/twist; rm -f /etc/twist/twistprotect; }
-        kill -9 \$pid
-        rm -f /var/run/shadowsocks-libev.pid
-        [ -e /etc/systemd/system/shadowsocks-libev.service ] && systemctl stop shadowsocks-libev
-        ssserverstatus
-        echostatus "\$?" "Stopping" "Shadowsocks-libev"
-    else
-        twistlog "Shadowsocks-libev is Already Stopped" "echo" "31"
-        status="0"
-    fi
-    componentps "fail2ban" "Fail2ban Protect" "hide" "enable"
-    if [ "\$?" = "0" ]; then
-        systemctl stop fail2ban
-        componentps "fail2ban" "Fail2ban Protect" "hide" "enable"
-        echostatus "\$?" "Stopping" "Fail2ban Protect"
-    else
-        twistlog "Fail2ban Protect Service is Already Stopped" "echo" "31"
-    fi
-    componentps "$webservername" "Fake Web Redirect" "hide" "$FWS"
-    case "\$?" in
-        0)
-            systemctl stop ${webservername}
-            componentps "$webservername" "Fake Web Redirect" "hide" "$FWS"
-            echostatus "\$?" "Stopping" "Fake Web Redirect"
-            ;;
-        1)
-            twistlog "Fake Web Redirect Service is Already Stopped" "echo" "31"
-            ;;
-        2)
-            componentps "$webservername" "Fake Web Redirect" "echo" "disabled"
-            ;;
-    esac
-}
 
 twist_restart(){
     twistlog "[TWIST Restarting Server Service]" "echo" "34"
@@ -893,12 +675,6 @@ twist_restart(){
     /usr/bin/twist start
 }
 
-twist_custom(){
-    twistlog "[TWIST Loading Shadowsocks Configurator]" "echo" "34"
-    sleep 2
-    nano /etc/shadowsocks-libev/config.json
-    /usr/bin/twist restart
-}
 
 twist_do(){
     twistlog "[TWIST Preparing \${2}]" "echo" "34"
@@ -937,41 +713,12 @@ EOF
     cat > /root/twistprotect <<-EOF
 #!/bin/bash
 
-date="\$(date +%Y-%m-%d-%H:%M:%S)"
-echo -e "# [\033[34;1mTWIST Shadowsocks-libev Service Protect Services\033[0m]"
-
-twistlog(){
     [ -e /var/log/twist ] || touch /var/log/twist
     echo "# \${date} \${1} " >> /var/log/twist
 }
 
-twistprotect(){
-    echo -e "# \033[32;1mTWIST Shadowsocks Protect Services Enabled \033[0m"
-    if [ "\$(ps -ef | grep -v grep | grep -i "${ssserverpath}" | awk '{print \$2}')" = "" ]; then
-        echo -e "# \033[31;1mShadowsocks-libev Service Stopped Detected \033[0m"
-        twistlog "Shadowsocks-libev Service Stopped Detected"
-        /usr/bin/twist restart
-        if [ "\$(ps -ef | grep -v grep | grep -i "${ssserverpath}" | awk '{print \$2}')" = "" ]; then
-            twistlog "Shadowsocks-libev Service Restart Failed"
-            twistlog "[Shadowsocks Protect Services Disabled Due To Error]"
-            rm -f /etc/twist/twistprotect
-        else
-            twistlog "Shadowsocks-libev Service Restart Success"
-        fi
-    else
-        echo -e "# \033[32;1mShadowsocks-libev Service Running Detected \033[0m"
-    fi
-}
-
-if [ -e /etc/twist/twistprotect ]; then
-    twistprotect
-else
-    echo -e "# \033[31;1mTWIST Shadowsocks Protect Services Disabled \033[0m"
-fi
-
 EOF
     chmod +x /etc/network/if-pre-up.d/iptablesload /etc/network/if-pre-up.d/ip6tablesload /etc/rc.local /usr/bin/twist /root/twistprotect
-    chmod 600 /etc/shadowsocks-libev/config.json
     systemctl enable iptables fail2ban cron
     systemctl restart iptables fail2ban cron
     iptables-restore < /etc/iptables.rules
